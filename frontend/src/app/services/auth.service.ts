@@ -83,7 +83,7 @@ export class AuthService {
   logout() {
     this.jwtSrv.removeToken();
     this._currentUser$.next(null);
-    this.router.navigate(['/']);
+    this.router.navigate(['/login']);
     
   }
   add(newUser:AuthService){
