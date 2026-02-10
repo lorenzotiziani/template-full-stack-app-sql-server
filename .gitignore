@@ -5,4 +5,27 @@ frontend/node_modules
 frontend/dist
 backend/node_modules
 backend/dist
-/.vscode
+backend/package-lock.json
+backend/package.json
+backend/node_modules/.package-lock.json
+frontend/.angular# OS / IDE files
+.DS_Store
+.idea/
+*.log
+
+# Node.js build outputs
+node_modules/
+dist/
+
+# Backend
+backend/.env
+backend/node_modules/
+backend/dist/
+backend/package-lock.json
+backend/package.json
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.angular/cache/
