@@ -1,70 +1,73 @@
 import * as z from "zod"
 
-const passwordRequirements =  z.string().min(8).nonempty()
+// Password requirements
+const passwordRequirements = z.string()
+    .min(8, "La password deve essere lunga almeno 8 caratteri")
+    .max(128, "La password è troppo lunga")
     .refine((password) => /[A-Z]/.test(password), {
-      message: "Needs an uppercase character",
+      message: "Deve contenere almeno una lettera maiuscola",
     })
     .refine((password) => /[a-z]/.test(password), {
-      message: "Needs a lowercase character",
+      message: "Deve contenere almeno una lettera minuscola",
     })
-    .refine((password) => /[0-9]/.test(password), { 
-      message: "Needs a number" 
+    .refine((password) => /[0-9]/.test(password), {
+      message: "Deve contenere almeno un numero"
     })
     .refine((password) => /[!@#$%^&*]/.test(password), {
-      message: "Needs a special char",
-    })
+      message: "Deve contenere almeno un carattere speciale (!@#$%^&*)",
+    });
 
 export const loginRequirements = z.object({
-  email:z.string().email(),
-  password:passwordRequirements
-})
+  body: z.object({
+    email: z.string()
+        .email("Email non valida")
+        .toLowerCase()
+        .trim(),
+    password: z.string().min(1, "Password richiesta") // Non validare troppo in login
+  })
+});
 
 export const registerRequirements = z.object({
-  email:z.string().email(),
-  password:passwordRequirements,
-  confirm:passwordRequirements,
-  nome: z.string().min(2).max(100).nonempty(),
-  cognome: z.string().min(2).max(100).nonempty(),
-})
+  body: z.object({
+    email: z.string()
+        .email("Email non valida")
+        .toLowerCase()
+        .trim(),
+    password: passwordRequirements,
+    confirm: passwordRequirements,
+    nome: z.string()
+        .min(2, "Il nome deve essere lungo almeno 2 caratteri")
+        .max(50, "Il nome è troppo lungo")
+        .trim()
+        .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il nome contiene caratteri non validi"),
+    cognome: z.string()
+        .min(2, "Il cognome deve essere lungo almeno 2 caratteri")
+        .max(50, "Il cognome è troppo lungo")
+        .trim()
+        .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, "Il cognome contiene caratteri non validi"),
 
-export type loginDTO = z.infer<typeof loginRequirements>
-export type registerDTO = z.infer<typeof registerRequirements>
+  })
+      .refine((data) => data.password === data.confirm, {
+        message: "Le password non coincidono",
+        path: ["confirm"],
+      })
+});
 
-export interface User {
-  id: number;
-  email: string;
-  password: string;
-  nome: string;
-  cognome: string;
-  isActive: boolean;
-}
 
-export interface UserSafe {
-  id: number;
-  email: string;
-  nome: string;
-  cognome: string;
-  isActive: boolean;
-};
+export const activateAccountRequirements = z.object({
+  query: z.object({
+    token: z.string().min(1, "Token richiesto")
+  })
+});
 
-export interface RefreshToken {
-  id: number;
-  token: string;
-  userId: number;
-  expiresAt: Date;
-  isRevoked: boolean;
-  createdAt: Date;
-}
 
-export interface AuthResponse {
-  user: Omit<User, 'password'>;
-  accessToken: string;
-  refreshToken: string;
-}
+export const refreshTokenRequirements = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1, "Refresh token richiesto")
+  })
+});
 
-export interface JwtPayload {
-  userId: number;
-  email: string;
-  iat?: number;
-  exp?: number;
-}
+
+export type loginDTO = z.infer<typeof loginRequirements>['body'];
+export type registerDTO = z.infer<typeof registerRequirements>['body'];
+

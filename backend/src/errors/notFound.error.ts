@@ -1,19 +1,29 @@
-import {NextFunction, Request, Response} from "express";
+import { NextFunction, Request, Response } from "express";
 
-export class NotFoundError extends Error{
-    constructor() {
-        super('Entity Not found');
+export class NotFoundError extends Error {
+    public statusCode: number;
+
+    constructor(message: string = 'Risorsa non trovata') {
+        super(message);
+        this.name = 'NotFoundError';
+        this.statusCode = 404;
+
+        Error.captureStackTrace(this, this.constructor);
     }
 }
 
-
-export const notFoundHandler = (err: Error, req: Request, res: Response, next: NextFunction) =>{
+export const notFoundHandler = (
+    err: Error,
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     if (err instanceof NotFoundError) {
-        res.status(404).json({
+        return res.status(404).json({
+            success: false,
             error: 'NotFoundError',
             message: err.message
-        })
-    }else{
-        next(err)
+        });
     }
-}
+    next(err);
+};

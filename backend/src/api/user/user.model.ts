@@ -1,64 +1,64 @@
 import sql from 'mssql';
 import { getPool } from '../../config/database';
-import { User } from '../auth/auth.dto';
+import { User } from '../entities/authEntity';
 
 export class UserModel {
   static async findById(id: number): Promise<User | null> {
     const pool = getPool();
     const request = pool.request();
-    
+
     const result = await request
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT id, email, password, nome, cognome, isActive
-        FROM TUtente
-        WHERE id = @id AND isActive = 1
-      `);
-    
+        .input('id', sql.Int, id)
+        .query(`
+          SELECT id, email, password, nome, cognome, isActive
+          FROM TUtente
+          WHERE id = @id
+        `);
+
     return result.recordset[0] || null;
   }
 
   static async findByEmail(email: string): Promise<User | null> {
     const pool = getPool();
     const request = pool.request();
-    
+
     const result = await request
-      .input('email', sql.VarChar(255), email)
-      .query(`
-        SELECT id, email, password, nome, cognome, isActive 
-        FROM TUtente
-        WHERE email = @email AND isActive = 1
-      `);
-    
+        .input('email', sql.VarChar(255), email)
+        .query(`
+          SELECT id, email, password, nome, cognome, isActive
+          FROM TUtente
+          WHERE email = @email
+        `);
+
     return result.recordset[0] || null;
   }
 
   static async create(userData: Omit<User, 'id'>): Promise<User> {
     const pool = getPool();
     const request = pool.request();
-    
+
     const result = await request
-      .input('email', sql.VarChar(255), userData.email)
-      .input('password', sql.VarChar(255), userData.password)
-      .input('firstName', sql.VarChar(100), userData.nome)
-      .input('lastName', sql.VarChar(100), userData.cognome)
-      .input('isActive', sql.Bit, userData.isActive)
-      .query(`
-        INSERT INTO TUtente (email, password, nome, cognome, isActive)
-        OUTPUT INSERTED.*
-        VALUES (@email, @password, @firstName, @lastName, @isActive)
-      `);
-    
+        .input('email', sql.VarChar(255), userData.email)
+        .input('password', sql.VarChar(255), userData.password)
+        .input('firstName', sql.VarChar(100), userData.nome)
+        .input('lastName', sql.VarChar(100), userData.cognome)
+        .input('isActive', sql.Bit, userData.isActive)
+        .query(`
+          INSERT INTO TUtente (email, password, nome, cognome, isActive)
+            OUTPUT INSERTED.*
+          VALUES (@email, @password, @firstName, @lastName, @isActive)
+        `);
+
     return result.recordset[0];
   }
 
   static async update(id: number, userData: Partial<User>): Promise<User | null> {
     const pool = getPool();
     const request = pool.request();
-    
+
     let setClause = [];
     let inputs: any = { id };
-    
+
     if (userData.nome !== undefined) {
       setClause.push('nome = @nome');
       inputs.nome = userData.nome;
@@ -79,13 +79,13 @@ export class UserModel {
       setClause.push('isActive = @isActive');
       inputs.isActive = userData.isActive;
     }
-    
-    
+
+
     // Se non ci sono campi da aggiornare, restituisci l'utente corrente
     if (setClause.length === 0) {
       return this.findById(id);
     }
-    
+
     Object.keys(inputs).forEach(key => {
       if (key === 'id') {
         request.input(key, sql.Int, inputs[key]);
@@ -95,14 +95,14 @@ export class UserModel {
         request.input(key, sql.VarChar(255), inputs[key]);
       }
     });
-    
+
     const result = await request.query(`
       UPDATE TUtente
       SET ${setClause.join(', ')}
-      OUTPUT INSERTED.*
+        OUTPUT INSERTED.*
       WHERE id = @id
     `);
-    
+
     return result.recordset[0] || null;
   }
 
@@ -122,20 +122,20 @@ export class UserModel {
   static async isEmailTaken(email: string, excludeUserId?: number): Promise<boolean> {
     const pool = getPool();
     const request = pool.request();
-    
+
     request.input('email', sql.VarChar(255), email);
-    
+
     let query = `
       SELECT COUNT(*) as count
-      FROM Users 
+      FROM Users
       WHERE email = @email AND isActive = 1
     `;
-    
+
     if (excludeUserId) {
       request.input('excludeUserId', sql.Int, excludeUserId);
       query += ' AND id != @excludeUserId';
     }
-    
+
     const result = await request.query(query);
     return result.recordset[0].count > 0;
   }
@@ -143,18 +143,17 @@ export class UserModel {
   static async delete(id: number): Promise<void> {
     const pool = getPool();
     await pool.request()
-      .input('userId', sql.Int, id)
-      .query(`
-        DELETE FROM RefreshTokens
-        WHERE userId = @userId
-      `);
+        .input('userId', sql.Int, id)
+        .query(`
+          DELETE FROM RefreshTokens
+          WHERE userId = @userId
+        `);
 
     await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        DELETE FROM TUtente
-        WHERE id = @id
-      `);
+        .input('id', sql.Int, id)
+        .query(`
+          DELETE FROM TUtente
+          WHERE id = @id
+        `);
   }
-
 }

@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { UserModel } from './user.model';
 import { RefreshTokenModel } from '../../models/RefreshToken';
-import { User, UserSafe } from '../auth/auth.dto';
+import { User, UserSafe } from '../entities/authEntity';
 
 export interface UpdateUserData {
   firstName?: string;
@@ -19,7 +19,7 @@ export interface UsersResponse {
 export class UserService {
   static async getUserById(id: number): Promise<Omit<User, 'password'> | null> {
     const user = await UserModel.findById(id);
-    
+
     if (!user) {
       return null;
     }
@@ -72,12 +72,11 @@ export class UserService {
 
   static async getAllUsers(): Promise<UserSafe[]> {
     const users = await UserModel.findAll();
-    
+
     // Rimuove la password
     return users.map(user => {
       const { password, ...userWithoutPassword } = user;
       return userWithoutPassword;
     });
   }
-
 }

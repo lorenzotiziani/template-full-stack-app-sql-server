@@ -27,7 +27,7 @@ app.use(handlers);
 const startServer = async () => {
   try {
     await connectDB();
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Server in esecuzione su porta ${PORT}`);
     });
@@ -38,3 +38,6 @@ const startServer = async () => {
 };
 
 startServer();
+
+
+export default app;

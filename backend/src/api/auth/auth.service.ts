@@ -1,67 +1,59 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { UserModel } from '../user/user.model';
-import { RefreshTokenModel } from '../../models/RefreshToken';
-import { loginDTO, registerDTO, AuthResponse, JwtPayload } from '../auth/auth.dto';
-import { jwtConfig } from '../../config/jwt';
+import {UserModel} from '../user/user.model';
+import {RefreshTokenModel} from '../../models/RefreshToken';
+import {loginDTO, registerDTO} from './auth.dto';
+import {jwtConfig} from '../../config/jwt';
+import {BadRequestError, UnauthorizedError} from '../../errors';
+import {AuthResponse, JwtPayload} from '../entities/authEntity'
 
 export class AuthService {
-  static async register(data: registerDTO): Promise<AuthResponse> {
-    // Verifica se l'utente esiste già
+  static async register(data: registerDTO): Promise<{ message: string; user: any }> {
     const existingUser = await UserModel.findByEmail(data.email);
     if (existingUser) {
-      throw new Error('Email già registrata');
+      throw new BadRequestError('Email già registrata');
     }
-
 
     if (data.password !== data.confirm) {
-      throw new Error('Le password non coincidono');
+      throw new BadRequestError('Le password non coincidono');
     }
-    // Hash password
+
     const hashedPassword = await bcrypt.hash(data.password, 12);
-    
-    // Crea utente
+
     const user = await UserModel.create({
       email: data.email,
       password: hashedPassword,
       nome: data.nome,
       cognome: data.cognome,
-      isActive: true
+      isActive: false
     });
 
-    // Genera tokens
-    const { accessToken, refreshToken } = await this.generateTokens(user);
-
-    // Salva refresh token
-    await RefreshTokenModel.create({
-      token: refreshToken,
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      isRevoked: false
-    });
 
     const { password, ...userWithoutPassword } = user;
-    
+
     return {
-      user: userWithoutPassword,
-      accessToken,
-      refreshToken
+      message: 'Registrazione completata. Controlla la tua email per attivare l\'account.',
+      user: userWithoutPassword
     };
   }
 
   static async login(data: loginDTO): Promise<AuthResponse> {
     const user = await UserModel.findByEmail(data.email);
+
     if (!user) {
-      throw new Error('Credenziali non valide');
+      throw new UnauthorizedError('Credenziali non valide');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account non attivato. Controlla la tua email.');
     }
 
     const isValidPassword = await bcrypt.compare(data.password, user.password);
     if (!isValidPassword) {
-      throw new Error('Credenziali non valide');
+      throw new UnauthorizedError('Credenziali non valide');
     }
 
     await RefreshTokenModel.revokeByUserId(user.id);
-
 
     const { accessToken, refreshToken } = await this.generateTokens(user);
 
@@ -73,7 +65,7 @@ export class AuthService {
     });
 
     const { password, ...userWithoutPassword } = user;
-    
+
     return {
       user: userWithoutPassword,
       accessToken,
@@ -82,34 +74,40 @@ export class AuthService {
   }
 
   static async refreshToken(token: string): Promise<{ accessToken: string; refreshToken: string }> {
-
     const storedToken = await RefreshTokenModel.findByToken(token);
-    if (!storedToken) {
-      throw new Error('Refresh token non valido');
+    if (!storedToken || storedToken.isRevoked) {
+      throw new UnauthorizedError('Refresh token non valido');
     }
 
-    // Verifica JWT
+    if (new Date() > storedToken.expiresAt) {
+      await RefreshTokenModel.revokeByToken(token);
+      throw new UnauthorizedError('Refresh token scaduto');
+    }
+
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(token, jwtConfig.refreshSecret) as JwtPayload;
     } catch (error) {
       await RefreshTokenModel.revokeByToken(token);
-      throw new Error('Refresh token non valido');
+      throw new UnauthorizedError('Refresh token non valido');
     }
 
-    // Trova utente
     const user = await UserModel.findById(decoded.userId);
     if (!user) {
-      throw new Error('Utente non trovato');
+      throw new UnauthorizedError('Utente non trovato');
     }
 
-    // Revoca vecchio token
+    if (!user.isActive) {
+      await RefreshTokenModel.revokeByUserId(user.id);
+      throw new UnauthorizedError('Account disattivato');
+    }
+
     await RefreshTokenModel.revokeByToken(token);
 
-    // Genera nuovi tokens
+
     const tokens = await this.generateTokens(user);
 
-    // Salva nuovo refresh token
+
     await RefreshTokenModel.create({
       token: tokens.refreshToken,
       userId: user.id,
@@ -125,33 +123,30 @@ export class AuthService {
   }
 
   private static async generateTokens(user: any): Promise<{ accessToken: string; refreshToken: string }> {
-  const payload: JwtPayload = {
-    userId: user.id,
-    email: user.email
-  };
+    const payload: JwtPayload = {
+      userId: user.id,
+      email: user.email
+    };
 
-  // Opzioni per access token
-  const accessTokenOptions: jwt.SignOptions = {
-    expiresIn: jwtConfig.expiresIn
-  };
+    const accessTokenOptions: jwt.SignOptions = {
+      expiresIn: jwtConfig.expiresIn
+    };
 
-  // Opzioni per refresh token
-  const refreshTokenOptions: jwt.SignOptions = {
-    expiresIn: jwtConfig.refreshExpiresIn
-  };
+    const refreshTokenOptions: jwt.SignOptions = {
+      expiresIn: jwtConfig.refreshExpiresIn
+    };
 
-  const accessToken = jwt.sign(payload, jwtConfig.secret, accessTokenOptions);
-  const refreshToken = jwt.sign(payload, jwtConfig.refreshSecret, refreshTokenOptions);
+    const accessToken = jwt.sign(payload, jwtConfig.secret, accessTokenOptions);
+    const refreshToken = jwt.sign(payload, jwtConfig.refreshSecret, refreshTokenOptions);
 
-  return { accessToken, refreshToken };
-}
+    return { accessToken, refreshToken };
+  }
 
   static async verifyAccessToken(token: string): Promise<JwtPayload> {
     try {
-      const decoded = jwt.verify(token, jwtConfig.secret) as JwtPayload;
-      return decoded;
+      return jwt.verify(token, jwtConfig.secret) as JwtPayload;
     } catch (error) {
-      throw new Error('Token non valido');
+      throw new UnauthorizedError('Token non valido');
     }
   }
 }
