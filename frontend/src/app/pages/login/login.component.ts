@@ -49,7 +49,7 @@ export class LoginComponent {
     this.destroyed$.next();
     this.destroyed$.complete();
   }
-  
+
   login() {
     if (this.loginForm.invalid) {
       return;
@@ -58,13 +58,14 @@ export class LoginComponent {
     const { username, password } = this.loginForm.value;
 
     this.loginService.login(username, password).subscribe({
-      next: (res) => {
+      next: () => {
         this.router.navigate([this.requestedUrl ? this.requestedUrl : '/']);
       },
-      error: (err) => {
-        this.loginError = 'Email o password errati';
+      error: (err: Error) => {
+        this.loginError = err.message;
       }
     });
   }
+
 
 }

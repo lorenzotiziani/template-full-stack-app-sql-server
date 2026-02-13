@@ -10,6 +10,8 @@ import { CurrencyPipe } from '@angular/common';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './utils/auth.interceptor';
 import { HomeComponent } from './pages/home/home.component';
+import {IfAuthenticatedDirective} from './utils/if-authenthicated.directive'
+import {logoutInterceptor} from "./utils/logout.interceptor";
 
 @NgModule({
   declarations: [
@@ -17,7 +19,7 @@ import { HomeComponent } from './pages/home/home.component';
     LoginComponent,
     RegisterComponent,
     HomeComponent,
-
+    IfAuthenticatedDirective
   ],
   imports: [
     BrowserModule,
@@ -28,7 +30,7 @@ import { HomeComponent } from './pages/home/home.component';
   providers: [
     CurrencyPipe,
     provideHttpClient(
-      withInterceptors([authInterceptor]),
+      withInterceptors([authInterceptor, logoutInterceptor]),
     )
   ],
   bootstrap: [AppComponent]
