@@ -45,11 +45,6 @@ export class LoginComponent {
       });
   }
 
-  ngOnDestroy(): void {
-    this.destroyed$.next();
-    this.destroyed$.complete();
-  }
-
   login() {
     if (this.loginForm.invalid) {
       return;
