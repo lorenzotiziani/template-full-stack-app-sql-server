@@ -5,8 +5,7 @@ export interface User {
     nome: string;
     cognome: string;
     isActive: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+
 }
 export interface UserSafe {
     id: number;
@@ -32,6 +31,6 @@ export interface RefreshToken {
     token: string;
     userId: number;
     expiresAt: Date;
-    isRevoked: boolean;
+    isRevoked: boolean | null;
     createdAt: Date;
 }

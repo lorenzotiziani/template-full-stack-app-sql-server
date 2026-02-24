@@ -1,10 +1,10 @@
-import { Response } from 'express';
+import e, { Response,NextFunction } from 'express';
 import { UserService } from './user.service';
 import { AuthRequest } from '../../middleware/auth.middleware';
 
 
 export class UserController {
-  static async getProfile(req: AuthRequest, res: Response) {
+  static async getProfile(req: AuthRequest, res: Response, next:NextFunction) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -27,14 +27,11 @@ export class UserController {
         data: user
       });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Errore durante il recupero del profilo'
-      });
+      next(error)
     }
   }
 
-  static async changePassword(req: AuthRequest, res: Response) {
+  static async changePassword(req: AuthRequest, res: Response, next:NextFunction) {
     const ipAddress =
         req.headers['x-forwarded-for']?.toString().split(',')[0].trim() ||
         req.socket.remoteAddress ||
@@ -49,14 +46,11 @@ export class UserController {
         message: 'Password cambiata con successo'
       });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Errore durante il cambio password'
-      });
+      next(error)
     }
   }
 
-  static async deleteAccount(req: AuthRequest, res: Response) {
+  static async deleteAccount(req: AuthRequest, res: Response, next:NextFunction) {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -72,14 +66,11 @@ export class UserController {
         message: 'Account eliminato con successo'
       });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Errore durante l\'eliminazione dell\'account'
-      });
+      next(error)
     }
   }
 
-  static async getAllUsers(req: AuthRequest, res: Response) {
+  static async getAllUsers(req: AuthRequest, res: Response, next:NextFunction) {
     try {
       const users = await UserService.getAllUsers();
       res.json({
@@ -87,10 +78,7 @@ export class UserController {
         data: users
       });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Errore durante il recupero degli utenti'
-      });
+      next(error)
     }
   }
 

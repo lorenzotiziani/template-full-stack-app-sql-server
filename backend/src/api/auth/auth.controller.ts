@@ -1,9 +1,6 @@
 import {NextFunction, Request, Response} from 'express';
 import { AuthService } from './auth.service';
 import { loginDTO, registerDTO } from './auth.dto';
-import jwt from "jsonwebtoken";
-import { UserModel } from '../user/user.model';
-import { UserService } from '../user/user.service';
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {

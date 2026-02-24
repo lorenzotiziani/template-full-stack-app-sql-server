@@ -3,10 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
 import bodyParser from 'body-parser';
-import { connectDB } from './config/database';
+import { prisma } from './config/prisma';
 import apiRouter from './routes';
 import { handlers } from './errors';
-
 
 dotenv.config();
 
@@ -17,16 +16,15 @@ app.use(cors());
 app.use(morgan('tiny'));
 app.use(bodyParser.json());
 
-// Routes
-app.use('/api/', apiRouter);
 
-// Error handling middleware
+app.use('/api/', apiRouter);
 app.use(handlers);
 
-// Start server
+
 const startServer = async () => {
   try {
-    await connectDB();
+    await prisma.$connect();
+    console.log('✅ Connessione al database PostgreSQL (via Prisma) riuscita!');
 
     app.listen(PORT, () => {
       console.log(`🚀 Server in esecuzione su porta ${PORT}`);
@@ -38,6 +36,5 @@ const startServer = async () => {
 };
 
 startServer();
-
 
 export default app;

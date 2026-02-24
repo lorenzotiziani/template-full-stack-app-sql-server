@@ -1,9 +1,16 @@
 import sql from 'mssql';
 import { getPool } from '../../config/database';
-import { User } from '../entities/authEntity';
+import { User, UserSafe } from '../entities/authEntity';
+import {prisma} from '../../config/prisma'
+
 
 export class UserModel {
   static async findById(id: number): Promise<User | null> {
+    return await prisma.tUtente.findUnique({
+      where: { id },
+    });
+
+    /*
     const pool = getPool();
     const request = pool.request();
 
@@ -15,11 +22,14 @@ export class UserModel {
           WHERE id = @id
         `);
 
-    return result.recordset[0] || null;
+    return result.recordset[0] || null;*/
   }
 
   static async findByEmail(email: string): Promise<User | null> {
-    const pool = getPool();
+    return await prisma.tUtente.findFirst({
+      where:{email}
+    })
+    /* const pool = getPool();
     const request = pool.request();
 
     const result = await request
@@ -30,11 +40,14 @@ export class UserModel {
           WHERE email = @email
         `);
 
-    return result.recordset[0] || null;
+    return result.recordset[0] || null; */
   }
 
   static async create(userData: Omit<User, 'id'>): Promise<User> {
-    const pool = getPool();
+    return await prisma.tUtente.create({
+      data: userData
+    });
+    /* const pool = getPool();
     const request = pool.request();
 
     const result = await request
@@ -49,11 +62,21 @@ export class UserModel {
           VALUES (@email, @password, @firstName, @lastName, @isActive)
         `);
 
-    return result.recordset[0];
+    return result.recordset[0]; */
   }
 
   static async update(id: number, userData: Partial<User>): Promise<User | null> {
-    const pool = getPool();
+    try {
+      return await prisma.tUtente.update({
+        where: { id },
+        data: userData,
+      });
+    } catch (error) {
+      // Se l'utente non esiste Prisma lancia errore
+      return null;
+    }
+    
+    /* const pool = getPool();
     const request = pool.request();
 
     let setClause = [];
@@ -103,11 +126,26 @@ export class UserModel {
       WHERE id = @id
     `);
 
-    return result.recordset[0] || null;
+    return result.recordset[0] || null; */
   }
 
-  static async findAll(): Promise<User[]> {
-    const pool = getPool();
+  static async findAll(): Promise<UserSafe[]> {
+     return await prisma.tUtente.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        id: 'asc',
+      },
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        cognome: true,
+        isActive: true,
+      },
+    });
+    /* const pool = getPool();
     const result = await pool.request().query(`
       SELECT id, email, nome, cognome, isActive
       FROM TUtente
@@ -115,12 +153,23 @@ export class UserModel {
       ORDER BY id ASC
     `);
 
-    return result.recordset;
+    return result.recordset; */
   }
 
   // Metodo per verificare se un'email esiste (escludendo un utente specifico)
   static async isEmailTaken(email: string, excludeUserId?: number): Promise<boolean> {
-    const pool = getPool();
+    const count = await prisma.tUtente.count({
+      where: {
+        email,
+        isActive: true,
+        ...(excludeUserId && {
+          id: { not: excludeUserId },
+        }),
+      },
+    });
+
+    return count > 0;
+    /* const pool = getPool();
     const request = pool.request();
 
     request.input('email', sql.VarChar(255), email);
@@ -137,11 +186,19 @@ export class UserModel {
     }
 
     const result = await request.query(query);
-    return result.recordset[0].count > 0;
+    return result.recordset[0].count > 0; */
   }
 
   static async delete(id: number): Promise<void> {
-    const pool = getPool();
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({
+        where: { userId: id },
+      }),
+      prisma.tUtente.delete({
+        where: { id },
+      }),
+    ]);
+    /* const pool = getPool();
     await pool.request()
         .input('userId', sql.Int, id)
         .query(`
@@ -154,6 +211,6 @@ export class UserModel {
         .query(`
           DELETE FROM TUtente
           WHERE id = @id
-        `);
-  }
+        `);*/
+  } 
 }

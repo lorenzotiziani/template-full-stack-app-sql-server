@@ -72,11 +72,6 @@ export class UserService {
 
   static async getAllUsers(): Promise<UserSafe[]> {
     const users = await UserModel.findAll();
-
-    // Rimuove la password
-    return users.map(user => {
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
-    });
+    return users
   }
 }
